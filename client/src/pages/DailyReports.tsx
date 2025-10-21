@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Calendar, Cloud, Thermometer, Users, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -49,12 +50,17 @@ const initialFormData: DailyReportFormData = {
 
 export default function DailyReports() {
   const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = params.projectId as string | undefined;
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<DailyReportFormData>(initialFormData);
 
-  const { data: reports, isLoading } = trpc.dailyReports.list.useQuery({ projectId });
+  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: reports, isLoading } = trpc.dailyReports.list.useQuery(
+    { projectId: projectId || selectedProjectId },
+    { enabled: !!(projectId || selectedProjectId) }
+  );
   const createMutation = trpc.dailyReports.create.useMutation({
     onSuccess: () => {
       toast.success("Bautagebuch-Eintrag erstellt");
@@ -69,7 +75,7 @@ export default function DailyReports() {
 
   const handleSubmit = () => {
     createMutation.mutate({
-      projectId,
+      projectId: projectId || selectedProjectId,
       reportDate: new Date(formData.reportDate),
       weather: formData.weather,
       temperature: formData.temperature,

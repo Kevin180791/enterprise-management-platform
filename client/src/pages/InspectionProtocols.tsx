@@ -15,7 +15,8 @@ import { de } from "date-fns/locale";
 
 export default function InspectionProtocols() {
   const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = params.projectId as string | undefined;
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,7 +29,11 @@ export default function InspectionProtocols() {
     nextSteps: "",
   });
 
-  const { data: protocols, isLoading } = trpc.inspectionProtocols.list.useQuery({ projectId });
+  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: protocols, isLoading } = trpc.inspectionProtocols.list.useQuery(
+    { projectId: projectId || selectedProjectId },
+    { enabled: !!(projectId || selectedProjectId) }
+  );
   const createMutation = trpc.inspectionProtocols.create.useMutation({
     onSuccess: () => {
       toast.success("Begehungsprotokoll erstellt");
@@ -198,7 +203,7 @@ export default function InspectionProtocols() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={() => createMutation.mutate({ projectId, ...formData, inspectionDate: new Date(formData.inspectionDate) })}>
+            <Button onClick={() => createMutation.mutate({ projectId: projectId || selectedProjectId, ...formData, inspectionDate: new Date(formData.inspectionDate) })}>
               Protokoll erstellen
             </Button>
           </DialogFooter>

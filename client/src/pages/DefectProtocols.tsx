@@ -16,7 +16,8 @@ import { de } from "date-fns/locale";
 
 export default function DefectProtocols() {
   const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = params.projectId as string | undefined;
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,12 +33,19 @@ export default function DefectProtocols() {
     dueDate: "",
   });
 
-  const { data: defects, isLoading } = trpc.defectProtocols.list.useQuery({ projectId });
+  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: defects, isLoading } = trpc.defectProtocols.list.useQuery(
+    { projectId: projectId || selectedProjectId },
+    { enabled: !!(projectId || selectedProjectId) }
+  );
   const createMutation = trpc.defectProtocols.create.useMutation({
     onSuccess: () => {
       toast.success("Mangel erfasst");
       setIsDialogOpen(false);
-      trpc.useUtils().defectProtocols.list.invalidate({ projectId });
+      const pid = projectId || selectedProjectId;
+      if (pid) {
+        trpc.useUtils().defectProtocols.list.invalidate({ projectId: pid });
+      }
     },
   });
 
@@ -63,11 +71,29 @@ export default function DefectProtocols() {
           <h1 className="text-3xl font-bold">Mängelprotokoll</h1>
           <p className="text-muted-foreground mt-2">Erfassung und Verfolgung von Baumängeln</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={() => setIsDialogOpen(true)} disabled={!projectId && !selectedProjectId}>
           <Plus className="h-4 w-4 mr-2" />
           Mangel erfassen
         </Button>
       </div>
+
+      {!projectId && (
+        <div className="mb-6">
+          <Label htmlFor="project-select">Projekt auswählen</Label>
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger id="project-select">
+              <SelectValue placeholder="Bitte Projekt auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects?.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="grid gap-4">
         {defects && defects.length > 0 ? (
@@ -242,10 +268,17 @@ export default function DefectProtocols() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Abbrechen</Button>
             <Button 
               onClick={() => createMutation.mutate({ 
-                projectId, 
+                projectId: projectId || selectedProjectId,
+                title: formData.title,
+                description: formData.description,
+                location: formData.location,
+                trade: formData.trade,
+                category: formData.category,
+                severity: formData.severity,
+                responsibleParty: formData.responsibleParty,
+                responsibleContact: formData.responsibleContact,
                 detectedDate: new Date(formData.detectedDate),
                 dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
-                ...formData 
               })}
               disabled={!formData.title || !formData.description}
             >
