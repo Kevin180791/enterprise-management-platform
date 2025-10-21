@@ -250,8 +250,9 @@ export const appRouter = router({
       }),
   }),
 
-  // ==================== OLD DOCUMENT ROUTES (DEPRECATED) ====================
-  _documents: router({    list: protectedProcedure.query(async () => {
+  // ==================== PROJECT ROUTES ====================
+  projects: router({
+    list: protectedProcedure.query(async () => {
       return await db.getProjects();
     }),
 
@@ -558,16 +559,19 @@ export const appRouter = router({
         title: z.string(),
         description: z.string().optional(),
         location: z.string().optional(),
-        measurementDate: z.date(),
+        measurementDate: z.date().optional(),
+        measuredBy: z.string().optional(),
         quantity: z.number().optional(),
         unit: z.string().optional(),
+        unitPrice: z.number().optional(),
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const measurement = {
           id: randomUUID(),
           ...input,
-          measuredBy: ctx.user.id,
+          measurementDate: input.measurementDate || new Date(),
+          measuredBy: input.measuredBy || ctx.user.id,
           createdBy: ctx.user.id,
         };
         await db.createMeasurement(measurement);
@@ -575,9 +579,8 @@ export const appRouter = router({
       }),
 
     list: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
-      .query(async ({ input }) => {
-        return await db.getMeasurements(input.projectId);
+      .query(async () => {
+        return await db.getAllMeasurements();
       }),
 
     update: protectedProcedure

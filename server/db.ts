@@ -558,7 +558,7 @@ export async function getAllProjectDocuments() {
   if (!db) throw new Error("Database not available");
   
   return await db.select().from(projectDocuments)
-    .orderBy(desc(projectDocuments.createdAt));
+    .orderBy(desc(projectDocuments.uploadedAt));
 }
 
 export async function getAllCapacityPlanning() {
@@ -567,4 +567,12 @@ export async function getAllCapacityPlanning() {
   
   return await db.select().from(capacityPlanning)
     .orderBy(desc(capacityPlanning.weekStartDate));
+}
+
+export async function getAllMeasurements() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(measurements)
+    .orderBy(desc(measurements.measurementDate));
 }
