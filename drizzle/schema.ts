@@ -143,14 +143,19 @@ export type InsertProjectTeamMember = typeof projectTeamMembers.$inferInsert;
 export const projectTasks = mysqlTable("projectTasks", {
   id: varchar("id", { length: 64 }).primaryKey(),
   projectId: varchar("projectId", { length: 64 }).notNull(),
+  taskType: mysqlEnum("taskType", ["task", "rfi", "defect", "question"]).default("task").notNull(),
+  taskNumber: varchar("taskNumber", { length: 50 }),
   title: varchar("title", { length: 300 }).notNull(),
   description: text("description"),
-  status: mysqlEnum("status", ["pending", "in_progress", "completed", "blocked"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "blocked", "answered", "closed"]).default("pending").notNull(),
   priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium").notNull(),
   assignedTo: varchar("assignedTo", { length: 64 }),
+  requestedBy: varchar("requestedBy", { length: 64 }),
   startDate: timestamp("startDate"),
   dueDate: timestamp("dueDate"),
   completedDate: timestamp("completedDate"),
+  responseDate: timestamp("responseDate"),
+  response: text("response"),
   estimatedHours: int("estimatedHours"),
   actualHours: int("actualHours"),
   createdAt: timestamp("createdAt").defaultNow(),
@@ -160,6 +165,7 @@ export const projectTasks = mysqlTable("projectTasks", {
   projectIdx: index("project_idx").on(table.projectId),
   statusIdx: index("status_idx").on(table.status),
   assignedToIdx: index("assigned_to_idx").on(table.assignedTo),
+  taskTypeIdx: index("task_type_idx").on(table.taskType),
 }));
 
 export type ProjectTask = typeof projectTasks.$inferSelect;

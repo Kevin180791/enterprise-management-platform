@@ -1,781 +1,609 @@
-import { useRoute, Link } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  Building2,
-  Users,
-  ClipboardList,
-  FileText,
-  Plus,
-  ArrowLeft,
-  Pencil,
-  Trash2,
-  CheckCircle2,
-  Circle,
-  AlertCircle,
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-type TaskFormData = {
-  title: string;
-  description: string;
-  status: "pending" | "in_progress" | "completed" | "blocked";
-  priority: "low" | "medium" | "high" | "critical";
-  assignedTo: string;
-  startDate: string;
-  dueDate: string;
-  estimatedHours: string;
-};
-
-type TeamMemberFormData = {
-  employeeId: string;
-  role: string;
-};
-
-const initialTaskFormData: TaskFormData = {
-  title: "",
-  description: "",
-  status: "pending",
-  priority: "medium",
-  assignedTo: "",
-  startDate: "",
-  dueDate: "",
-  estimatedHours: "",
-};
-
-const initialTeamMemberFormData: TeamMemberFormData = {
-  employeeId: "",
-  role: "",
-};
+import { trpc } from "@/lib/trpc";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, ListTodo, MapPin, Plus, Users } from "lucide-react";
+import { useState } from "react";
+import { useLocation } from "wouter";
 
 export default function ProjectDetail() {
-  const [, params] = useRoute("/projects/:id");
-  const projectId = params?.id || "";
-
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [taskFormData, setTaskFormData] = useState<TaskFormData>(initialTaskFormData);
-  const [teamFormData, setTeamFormData] = useState<TeamMemberFormData>(initialTeamMemberFormData);
-
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const utils = trpc.useUtils();
-  const { data: project, isLoading } = trpc.projects.get.useQuery({ id: projectId });
-  const { data: tasks } = trpc.projects.getTasks.useQuery({ projectId });
-  const { data: documents } = trpc.projects.getDocuments.useQuery({ projectId });
+
+  // Get project ID from URL
+  const projectId = window.location.pathname.split("/").pop() || "";
+
+  const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery({ id: projectId });
+  const { data: tasks } = trpc.projects.getByType.useQuery({ projectId, taskType: undefined });
   const { data: teamMembers } = trpc.projects.getTeamMembers.useQuery({ projectId });
-  const { data: employees } = trpc.employees.list.useQuery();
+  const { data: documents } = trpc.documents.list.useQuery();
+  const { data: measurements } = trpc.measurements.list.useQuery();
+
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [taskFormData, setTaskFormData] = useState({
+    taskType: "task" as "task" | "rfi" | "defect" | "question",
+    title: "",
+    description: "",
+    priority: "medium" as "low" | "medium" | "high" | "critical",
+    assignedTo: "",
+    dueDate: "",
+  });
 
   const createTaskMutation = trpc.projects.createTask.useMutation({
     onSuccess: () => {
-      utils.projects.getTasks.invalidate();
-      toast.success("Aufgabe erfolgreich erstellt");
-      setIsTaskDialogOpen(false);
-      setTaskFormData(initialTaskFormData);
-    },
-    onError: (error) => {
-      toast.error("Fehler: " + error.message);
-    },
-  });
-
-  const updateTaskMutation = trpc.projects.updateTask.useMutation({
-    onSuccess: () => {
-      utils.projects.getTasks.invalidate();
-      toast.success("Aufgabe erfolgreich aktualisiert");
-      setIsTaskDialogOpen(false);
-      setEditingTaskId(null);
-      setTaskFormData(initialTaskFormData);
-    },
-    onError: (error) => {
-      toast.error("Fehler: " + error.message);
+      utils.projects.getByType.invalidate();
+      setTaskDialogOpen(false);
+      setTaskFormData({
+        taskType: "task",
+        title: "",
+        description: "",
+        priority: "medium",
+        assignedTo: "",
+        dueDate: "",
+      });
     },
   });
 
-  const deleteTaskMutation = trpc.projects.deleteTask.useMutation({
-    onSuccess: () => {
-      utils.projects.getTasks.invalidate();
-      toast.success("Aufgabe erfolgreich gelöscht");
-    },
-    onError: (error) => {
-      toast.error("Fehler: " + error.message);
-    },
-  });
-
-  const addTeamMemberMutation = trpc.projects.addTeamMember.useMutation({
-    onSuccess: () => {
-      utils.projects.getTeamMembers.invalidate();
-      toast.success("Teammitglied erfolgreich hinzugefügt");
-      setIsTeamDialogOpen(false);
-      setTeamFormData(initialTeamMemberFormData);
-    },
-    onError: (error) => {
-      toast.error("Fehler: " + error.message);
-    },
-  });
-
-  const removeTeamMemberMutation = trpc.projects.removeTeamMember.useMutation({
-    onSuccess: () => {
-      utils.projects.getTeamMembers.invalidate();
-      toast.success("Teammitglied erfolgreich entfernt");
-    },
-    onError: (error) => {
-      toast.error("Fehler: " + error.message);
-    },
-  });
-
-  const handleTaskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!taskFormData.title) {
-      toast.error("Bitte geben Sie einen Titel ein");
-      return;
-    }
-
-    const data = {
+  const handleCreateTask = () => {
+    createTaskMutation.mutate({
       projectId,
       ...taskFormData,
-      startDate: taskFormData.startDate ? new Date(taskFormData.startDate) : undefined,
       dueDate: taskFormData.dueDate ? new Date(taskFormData.dueDate) : undefined,
-      estimatedHours: taskFormData.estimatedHours ? parseInt(taskFormData.estimatedHours) : undefined,
-      description: taskFormData.description || undefined,
-      assignedTo: taskFormData.assignedTo || undefined,
-    };
-
-    if (editingTaskId) {
-      updateTaskMutation.mutate({ id: editingTaskId, ...data });
-    } else {
-      createTaskMutation.mutate(data);
-    }
-  };
-
-  const handleEditTask = (task: any) => {
-    setEditingTaskId(task.id);
-    setTaskFormData({
-      title: task.title,
-      description: task.description || "",
-      status: task.status,
-      priority: task.priority,
-      assignedTo: task.assignedTo || "",
-      startDate: task.startDate ? new Date(task.startDate).toISOString().split("T")[0] : "",
-      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "",
-      estimatedHours: task.estimatedHours?.toString() || "",
-    });
-    setIsTaskDialogOpen(true);
-  };
-
-  const handleDeleteTask = (id: string) => {
-    if (confirm("Möchten Sie diese Aufgabe wirklich löschen?")) {
-      deleteTaskMutation.mutate({ id });
-    }
-  };
-
-  const handleTeamSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!teamFormData.employeeId) {
-      toast.error("Bitte wählen Sie einen Mitarbeiter aus");
-      return;
-    }
-
-    addTeamMemberMutation.mutate({
-      projectId,
-      employeeId: teamFormData.employeeId,
-      role: teamFormData.role || undefined,
     });
   };
 
-  const handleRemoveTeamMember = (memberId: string) => {
-    if (confirm("Möchten Sie dieses Teammitglied wirklich entfernen?")) {
-      removeTeamMemberMutation.mutate({ memberId });
-    }
-  };
-
-  const getEmployeeName = (employeeId: string) => {
-    const employee = employees?.find(e => e.id === employeeId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : "Unbekannt";
-  };
-
-  const taskStats = {
-    total: tasks?.length || 0,
-    pending: tasks?.filter(t => t.status === "pending").length || 0,
-    inProgress: tasks?.filter(t => t.status === "in_progress").length || 0,
-    completed: tasks?.filter(t => t.status === "completed").length || 0,
-    blocked: tasks?.filter(t => t.status === "blocked").length || 0,
-  };
-
-  if (isLoading) {
+  if (projectLoading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Lade Projektdetails...</p>
+        </div>
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">Projekt nicht gefunden</p>
-        <Link href="/projects">
-          <Button className="mt-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück zur Übersicht
-          </Button>
-        </Link>
+      <div className="container mx-auto py-8">
+        <p className="text-center text-muted-foreground">Projekt nicht gefunden</p>
       </div>
     );
   }
 
+  const tasksByType = {
+    task: tasks?.filter((t: any) => t.taskType === "task") || [],
+    rfi: tasks?.filter((t: any) => t.taskType === "rfi") || [],
+    defect: tasks?.filter((t: any) => t.taskType === "defect") || [],
+    question: tasks?.filter((t: any) => t.taskType === "question") || [],
+  };
+
+  const projectDocuments = documents?.filter((d: any) => d.projectId === projectId) || [];
+  const projectMeasurements = measurements?.filter((m: any) => m.projectId === projectId) || [];
+
+  const getStatusBadgeClass = (status: string) => {
+    const classes = {
+      planning: "bg-blue-100 text-blue-800",
+      active: "bg-green-100 text-green-800",
+      on_hold: "bg-yellow-100 text-yellow-800",
+      completed: "bg-gray-100 text-gray-800",
+      cancelled: "bg-red-100 text-red-800",
+    };
+    return classes[status as keyof typeof classes] || "bg-gray-100 text-gray-800";
+  };
+
+  const getPriorityBadgeClass = (priority: string) => {
+    const classes = {
+      low: "bg-blue-100 text-blue-800",
+      medium: "bg-yellow-100 text-yellow-800",
+      high: "bg-orange-100 text-orange-800",
+      critical: "bg-red-100 text-red-800",
+    };
+    return classes[priority as keyof typeof classes] || "bg-gray-100 text-gray-800";
+  };
+
+  const getTaskTypeLabel = (type: string) => {
+    const labels = {
+      task: "Aufgabe",
+      rfi: "RFI",
+      defect: "Mangel",
+      question: "Frage",
+    };
+    return labels[type as keyof typeof labels] || type;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div>
-        <Link href="/projects">
-          <Button variant="ghost" size="sm" className="mb-4">
+      <div className="border-b bg-card">
+        <div className="container mx-auto py-6">
+          <Button variant="ghost" onClick={() => setLocation("/projects")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            Zurück zu Projekten
           </Button>
-        </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-            <p className="text-gray-600 mt-2">{project.description || "Keine Beschreibung"}</p>
+
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                {project.projectNumber && (
+                  <span className="flex items-center gap-1">
+                    <FileText className="h-4 w-4" />
+                    {project.projectNumber}
+                  </span>
+                )}
+                {project.client && (
+                  <span className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {project.client}
+                  </span>
+                )}
+                {project.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {project.location}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(project.status)}`}>
+                {project.status}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityBadgeClass(project.priority)}`}>
+                {project.priority}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              project.status === "active" ? "bg-green-100 text-green-800" :
-              project.status === "planning" ? "bg-blue-100 text-blue-800" :
-              project.status === "completed" ? "bg-gray-100 text-gray-800" :
-              project.status === "on_hold" ? "bg-yellow-100 text-yellow-800" :
-              "bg-red-100 text-red-800"
-            }`}>
-              {project.status === "active" ? "Aktiv" :
-               project.status === "planning" ? "Planung" :
-               project.status === "completed" ? "Abgeschlossen" :
-               project.status === "on_hold" ? "Pausiert" : "Abgebrochen"}
-            </span>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              project.priority === "critical" ? "bg-red-100 text-red-800" :
-              project.priority === "high" ? "bg-orange-100 text-orange-800" :
-              project.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
-              "bg-gray-100 text-gray-800"
-            }`}>
-              {project.priority === "critical" ? "Kritisch" :
-               project.priority === "high" ? "Hoch" :
-               project.priority === "medium" ? "Mittel" : "Niedrig"}
-            </span>
-          </div>
+
+          {project.description && (
+            <p className="mt-4 text-muted-foreground">{project.description}</p>
+          )}
         </div>
       </div>
 
-      {/* Project Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Kunde</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-semibold">{project.client || "Nicht angegeben"}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Standort</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-semibold">{project.location || "Nicht angegeben"}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Budget</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-semibold">
-              {project.budget 
-                ? (project.budget / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" })
-                : "Nicht angegeben"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Zeitraum</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              {project.startDate 
-                ? new Date(project.startDate).toLocaleDateString("de-DE")
-                : "Nicht angegeben"}
-              {project.endDate && ` - ${new Date(project.endDate).toLocaleDateString("de-DE")}`}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Tabs */}
-      <Tabs defaultValue="tasks" className="w-full">
-        <TabsList>
-          <TabsTrigger value="tasks">
-            <ClipboardList className="h-4 w-4 mr-2" />
-            Aufgaben ({taskStats.total})
-          </TabsTrigger>
-          <TabsTrigger value="team">
-            <Users className="h-4 w-4 mr-2" />
-            Team ({teamMembers?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            <FileText className="h-4 w-4 mr-2" />
-            Dokumente ({documents?.length || 0})
-          </TabsTrigger>
-        </TabsList>
+      <div className="container mx-auto py-6">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Übersicht</TabsTrigger>
+            <TabsTrigger value="tasks">
+              Aufgaben ({tasksByType.task.length + tasksByType.rfi.length + tasksByType.defect.length + tasksByType.question.length})
+            </TabsTrigger>
+            <TabsTrigger value="team">Team ({teamMembers?.length || 0})</TabsTrigger>
+            <TabsTrigger value="documents">Dokumente ({projectDocuments.length})</TabsTrigger>
+            <TabsTrigger value="measurements">Aufmaße ({projectMeasurements.length})</TabsTrigger>
+          </TabsList>
 
-        {/* Tasks Tab */}
-        <TabsContent value="tasks" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-sm">
-                <span className="text-gray-600">Offen: </span>
-                <span className="font-semibold">{taskStats.pending}</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-gray-600">In Bearbeitung: </span>
-                <span className="font-semibold">{taskStats.inProgress}</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-gray-600">Abgeschlossen: </span>
-                <span className="font-semibold">{taskStats.completed}</span>
-              </div>
-              {taskStats.blocked > 0 && (
-                <div className="text-sm">
-                  <span className="text-gray-600">Blockiert: </span>
-                  <span className="font-semibold text-red-600">{taskStats.blocked}</span>
-                </div>
-              )}
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Zeitraum</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {project.startDate && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>Start: {new Date(project.startDate).toLocaleDateString("de-DE")}</span>
+                      </div>
+                    )}
+                    {project.endDate && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>Ende: {new Date(project.endDate).toLocaleDateString("de-DE")}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Budget</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {project.budget ? (
+                    <p className="text-2xl font-bold">{project.budget.toLocaleString("de-DE")} €</p>
+                  ) : (
+                    <p className="text-muted-foreground">Nicht festgelegt</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Fortschritt</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Aufgaben</span>
+                      <span className="font-medium">
+                        {tasks?.filter((t: any) => t.status === "completed").length || 0} / {tasks?.length || 0}
+                      </span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all"
+                        style={{
+                          width: `${tasks?.length ? ((tasks.filter((t: any) => t.status === "completed").length / tasks.length) * 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <Button onClick={() => {
-              setEditingTaskId(null);
-              setTaskFormData(initialTaskFormData);
-              setIsTaskDialogOpen(true);
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Neue Aufgabe
-            </Button>
-          </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              {tasks && tasks.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Titel</TableHead>
-                      <TableHead>Zugewiesen an</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priorität</TableHead>
-                      <TableHead>Fällig am</TableHead>
-                      <TableHead className="text-right">Aktionen</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tasks.map((task) => (
-                      <TableRow key={task.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{task.title}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Schnellübersicht</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-secondary rounded-lg">
+                    <p className="text-2xl font-bold text-primary">{tasksByType.task.length}</p>
+                    <p className="text-sm text-muted-foreground">Aufgaben</p>
+                  </div>
+                  <div className="text-center p-4 bg-secondary rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">{tasksByType.rfi.length}</p>
+                    <p className="text-sm text-muted-foreground">RFIs</p>
+                  </div>
+                  <div className="text-center p-4 bg-secondary rounded-lg">
+                    <p className="text-2xl font-bold text-red-600">{tasksByType.defect.length}</p>
+                    <p className="text-sm text-muted-foreground">Mängel</p>
+                  </div>
+                  <div className="text-center p-4 bg-secondary rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">{tasksByType.question.length}</p>
+                    <p className="text-sm text-muted-foreground">Fragen</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Aufgaben & RFIs</h2>
+              <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Neue Aufgabe
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Neue Aufgabe erstellen</DialogTitle>
+                    <DialogDescription>
+                      Erstellen Sie eine Aufgabe, RFI, Mangel oder Frage für dieses Projekt
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label>Typ</Label>
+                      <Select
+                        value={taskFormData.taskType}
+                        onValueChange={(value: any) => setTaskFormData({ ...taskFormData, taskType: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="task">Aufgabe</SelectItem>
+                          <SelectItem value="rfi">RFI (Request for Information)</SelectItem>
+                          <SelectItem value="defect">Mangel</SelectItem>
+                          <SelectItem value="question">Frage</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Titel</Label>
+                      <Input
+                        value={taskFormData.title}
+                        onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+                        placeholder="Kurze Beschreibung"
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Beschreibung</Label>
+                      <Textarea
+                        value={taskFormData.description}
+                        onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+                        placeholder="Detaillierte Beschreibung"
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Priorität</Label>
+                        <Select
+                          value={taskFormData.priority}
+                          onValueChange={(value: any) => setTaskFormData({ ...taskFormData, priority: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Niedrig</SelectItem>
+                            <SelectItem value="medium">Mittel</SelectItem>
+                            <SelectItem value="high">Hoch</SelectItem>
+                            <SelectItem value="critical">Kritisch</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label>Fälligkeitsdatum</Label>
+                        <Input
+                          type="date"
+                          value={taskFormData.dueDate}
+                          onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Zugewiesen an</Label>
+                      <Select
+                        value={taskFormData.assignedTo}
+                        onValueChange={(value) => setTaskFormData({ ...taskFormData, assignedTo: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Mitarbeiter auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teamMembers?.map((member: any) => (
+                            <SelectItem key={member.employeeId} value={member.employeeId}>
+                              {member.employeeId}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>
+                      Abbrechen
+                    </Button>
+                    <Button onClick={handleCreateTask} disabled={!taskFormData.title}>
+                      Erstellen
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList>
+                <TabsTrigger value="all">
+                  Alle ({tasks?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="task">
+                  Aufgaben ({tasksByType.task.length})
+                </TabsTrigger>
+                <TabsTrigger value="rfi">
+                  RFIs ({tasksByType.rfi.length})
+                </TabsTrigger>
+                <TabsTrigger value="defect">
+                  Mängel ({tasksByType.defect.length})
+                </TabsTrigger>
+                <TabsTrigger value="question">
+                  Fragen ({tasksByType.question.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {["all", "task", "rfi", "defect", "question"].map((tabValue) => (
+                <TabsContent key={tabValue} value={tabValue} className="space-y-4">
+                  {(tabValue === "all" ? tasks : tasksByType[tabValue as keyof typeof tasksByType])?.map((task: any) => (
+                    <Card key={task.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-mono text-muted-foreground">{task.taskNumber}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
+                                {task.priority}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary">
+                                {getTaskTypeLabel(task.taskType)}
+                              </span>
+                            </div>
+                            <CardTitle className="text-lg">{task.title}</CardTitle>
                             {task.description && (
-                              <p className="text-sm text-gray-600 line-clamp-1">{task.description}</p>
+                              <CardDescription className="mt-2">{task.description}</CardDescription>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {task.assignedTo ? getEmployeeName(task.assignedTo) : "Nicht zugewiesen"}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            task.status === "completed" ? "bg-green-100 text-green-800" :
-                            task.status === "in_progress" ? "bg-blue-100 text-blue-800" :
-                            task.status === "blocked" ? "bg-red-100 text-red-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
-                            {task.status === "completed" ? <CheckCircle2 className="h-3 w-3 mr-1" /> :
-                             task.status === "in_progress" ? <Circle className="h-3 w-3 mr-1" /> :
-                             task.status === "blocked" ? <AlertCircle className="h-3 w-3 mr-1" /> :
-                             <Circle className="h-3 w-3 mr-1" />}
-                            {task.status === "completed" ? "Abgeschlossen" :
-                             task.status === "in_progress" ? "In Bearbeitung" :
-                             task.status === "blocked" ? "Blockiert" : "Offen"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            task.priority === "critical" ? "bg-red-100 text-red-800" :
-                            task.priority === "high" ? "bg-orange-100 text-orange-800" :
-                            task.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
-                            {task.priority === "critical" ? "Kritisch" :
-                             task.priority === "high" ? "Hoch" :
-                             task.priority === "medium" ? "Mittel" : "Niedrig"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {task.dueDate 
-                            ? new Date(task.dueDate).toLocaleDateString("de-DE")
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditTask(task)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteTask(task.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            {task.status === "completed" && (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-12">
-                  <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 mb-4">Noch keine Aufgaben vorhanden</p>
-                  <Button onClick={() => {
-                    setEditingTaskId(null);
-                    setTaskFormData(initialTaskFormData);
-                    setIsTaskDialogOpen(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Erste Aufgabe erstellen
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Team Tab */}
-        <TabsContent value="team" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Teammitglieder</h3>
-            <Button onClick={() => {
-              setTeamFormData(initialTeamMemberFormData);
-              setIsTeamDialogOpen(true);
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Mitglied hinzufügen
-            </Button>
-          </div>
-
-          <Card>
-            <CardContent className="pt-6">
-              {teamMembers && teamMembers.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Rolle</TableHead>
-                      <TableHead>Zugewiesen am</TableHead>
-                      <TableHead className="text-right">Aktionen</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamMembers.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium">
-                          {getEmployeeName(member.employeeId)}
-                        </TableCell>
-                        <TableCell>{member.role || "Nicht angegeben"}</TableCell>
-                        <TableCell>
-                          {new Date(member.assignedDate).toLocaleDateString("de-DE")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveTeamMember(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600 mb-4">Noch keine Teammitglieder zugewiesen</p>
-                  <Button onClick={() => {
-                    setTeamFormData(initialTeamMemberFormData);
-                    setIsTeamDialogOpen(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Erstes Mitglied hinzufügen
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Documents Tab */}
-        <TabsContent value="documents" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dokumente</CardTitle>
-              <CardDescription>Projektbezogene Dokumente und Dateien</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {documents && documents.length > 0 ? (
-                <div className="space-y-2">
-                  {documents.map((doc) => (
-                    <div key={doc.id} className="p-3 border rounded-lg">
-                      <h4 className="font-medium">{doc.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Kategorie: {doc.category === "plan" ? "Plan" :
-                                   doc.category === "contract" ? "Vertrag" :
-                                   doc.category === "rfi" ? "RFI" :
-                                   doc.category === "measurement" ? "Aufmaß" :
-                                   doc.category === "progress_report" ? "Fortschrittsbericht" : "Sonstiges"}
-                      </p>
-                    </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {task.dueDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Fällig: {new Date(task.dueDate).toLocaleDateString("de-DE")}
+                            </span>
+                          )}
+                          {task.assignedTo && (
+                            <span className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              Zugewiesen an: {task.assignedTo}
+                            </span>
+                          )}
+                          <span className="ml-auto">Status: {task.status}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600">Noch keine Dokumente vorhanden</p>
-                </div>
+
+                  {(tabValue === "all" ? tasks?.length === 0 : tasksByType[tabValue as keyof typeof tasksByType]?.length === 0) && (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="text-center text-muted-foreground">
+                          <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Keine {tabValue === "all" ? "Aufgaben" : getTaskTypeLabel(tabValue)} vorhanden</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </TabsContent>
+
+          {/* Team Tab */}
+          <TabsContent value="team" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Projektteam</h2>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Mitglied hinzufügen
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teamMembers?.map((member: any) => (
+                <Card key={member.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{member.employeeId}</CardTitle>
+                    {member.role && <CardDescription>{member.role}</CardDescription>}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Seit: {new Date(member.joinedAt).toLocaleDateString("de-DE")}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {teamMembers?.length === 0 && (
+                <Card className="col-span-full">
+                  <CardContent className="py-12">
+                    <div className="text-center text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Noch keine Teammitglieder zugewiesen</p>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Task Dialog */}
-      <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTaskId ? "Aufgabe bearbeiten" : "Neue Aufgabe erstellen"}
-            </DialogTitle>
-            <DialogDescription>
-              Geben Sie die Aufgabeninformationen ein
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleTaskSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="taskTitle">Titel *</Label>
-                <Input
-                  id="taskTitle"
-                  value={taskFormData.title}
-                  onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="taskDescription">Beschreibung</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={taskFormData.description}
-                  onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="taskStatus">Status</Label>
-                  <Select
-                    value={taskFormData.status}
-                    onValueChange={(value: any) => setTaskFormData({ ...taskFormData, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Offen</SelectItem>
-                      <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                      <SelectItem value="completed">Abgeschlossen</SelectItem>
-                      <SelectItem value="blocked">Blockiert</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taskPriority">Priorität</Label>
-                  <Select
-                    value={taskFormData.priority}
-                    onValueChange={(value: any) => setTaskFormData({ ...taskFormData, priority: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Niedrig</SelectItem>
-                      <SelectItem value="medium">Mittel</SelectItem>
-                      <SelectItem value="high">Hoch</SelectItem>
-                      <SelectItem value="critical">Kritisch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="taskAssignedTo">Zugewiesen an</Label>
-                <Select
-                  value={taskFormData.assignedTo}
-                  onValueChange={(value) => setTaskFormData({ ...taskFormData, assignedTo: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mitarbeiter auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees?.filter(e => e.status === "active").map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.firstName} {employee.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="taskStartDate">Startdatum</Label>
-                  <Input
-                    id="taskStartDate"
-                    type="date"
-                    value={taskFormData.startDate}
-                    onChange={(e) => setTaskFormData({ ...taskFormData, startDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taskDueDate">Fälligkeitsdatum</Label>
-                  <Input
-                    id="taskDueDate"
-                    type="date"
-                    value={taskFormData.dueDate}
-                    onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="taskEstimatedHours">Geschätzte Stunden</Label>
-                <Input
-                  id="taskEstimatedHours"
-                  type="number"
-                  value={taskFormData.estimatedHours}
-                  onChange={(e) => setTaskFormData({ ...taskFormData, estimatedHours: e.target.value })}
-                />
-              </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsTaskDialogOpen(false)}>
-                Abbrechen
-              </Button>
-              <Button type="submit" disabled={createTaskMutation.isPending || updateTaskMutation.isPending}>
-                {editingTaskId ? "Aktualisieren" : "Erstellen"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </TabsContent>
 
-      {/* Team Member Dialog */}
-      <Dialog open={isTeamDialogOpen} onOpenChange={setIsTeamDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Teammitglied hinzufügen</DialogTitle>
-            <DialogDescription>
-              Fügen Sie ein Teammitglied zum Projekt hinzu
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleTeamSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="teamEmployeeId">Mitarbeiter *</Label>
-                <Select
-                  value={teamFormData.employeeId}
-                  onValueChange={(value) => setTeamFormData({ ...teamFormData, employeeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mitarbeiter auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees?.filter(e => e.status === "active").map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.firstName} {employee.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="teamRole">Rolle</Label>
-                <Input
-                  id="teamRole"
-                  value={teamFormData.role}
-                  onChange={(e) => setTeamFormData({ ...teamFormData, role: e.target.value })}
-                  placeholder="z.B. Bauleiter, Planer, etc."
-                />
-              </div>
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Dokumente</h2>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Dokument hochladen
+              </Button>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsTeamDialogOpen(false)}>
-                Abbrechen
+
+            <div className="space-y-4">
+              {projectDocuments.map((doc: any) => (
+                <Card key={doc.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{doc.title}</CardTitle>
+                    {doc.description && <CardDescription>{doc.description}</CardDescription>}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary">
+                        {doc.category}
+                      </span>
+                      {doc.version && <span>Version: {doc.version}</span>}
+                      <span className="ml-auto">
+                        {new Date(doc.uploadedAt).toLocaleDateString("de-DE")}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {projectDocuments.length === 0 && (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Keine Dokumente vorhanden</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Measurements Tab */}
+          <TabsContent value="measurements" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Aufmaße</h2>
+              <Button onClick={() => setLocation("/measurements")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Aufmaß erstellen
               </Button>
-              <Button type="submit" disabled={addTeamMemberMutation.isPending}>
-                Hinzufügen
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </div>
+
+            <div className="space-y-4">
+              {projectMeasurements.map((measurement: any) => (
+                <Card key={measurement.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{measurement.title}</CardTitle>
+                    {measurement.description && <CardDescription>{measurement.description}</CardDescription>}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 text-sm">
+                      {measurement.quantity && measurement.unit && (
+                        <span className="font-medium">
+                          {measurement.quantity} {measurement.unit}
+                        </span>
+                      )}
+                      {measurement.location && (
+                        <span className="text-muted-foreground">{measurement.location}</span>
+                      )}
+                      <span className="ml-auto text-muted-foreground">
+                        {new Date(measurement.measurementDate).toLocaleDateString("de-DE")}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {projectMeasurements.length === 0 && (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Keine Aufmaße vorhanden</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
-

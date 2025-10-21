@@ -360,19 +360,28 @@ export const appRouter = router({
     createTask: protectedProcedure
       .input(z.object({
         projectId: z.string(),
+        taskType: z.enum(["task", "rfi", "defect", "question"]).default("task"),
         title: z.string(),
         description: z.string().optional(),
-        status: z.enum(["pending", "in_progress", "completed", "blocked"]).default("pending"),
+        status: z.enum(["pending", "in_progress", "completed", "blocked", "answered", "closed"]).default("pending"),
         priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
         assignedTo: z.string().optional(),
+        requestedBy: z.string().optional(),
         startDate: z.date().optional(),
         dueDate: z.date().optional(),
         estimatedHours: z.number().optional(),
+        response: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Generate task number based on type
+        const taskCount = await db.getTaskCountByType(input.projectId, input.taskType);
+        const taskNumber = `${input.taskType.toUpperCase()}-${String(taskCount + 1).padStart(4, '0')}`;
+        
         const task = {
           id: randomUUID(),
           ...input,
+          taskNumber,
+          requestedBy: input.requestedBy || ctx.user.id,
           createdBy: ctx.user.id,
         };
         await db.createProjectTask(task);
@@ -393,9 +402,20 @@ export const appRouter = router({
         return task;
       }),
 
-    getTasks: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
+    list: protectedProcedure
+      .query(async () => {
+        return await db.getAllTasks();
+      }),
+
+    getByType: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        taskType: z.enum(["task", "rfi", "defect", "question"]).optional(),
+      }))
       .query(async ({ input }) => {
+        if (input.taskType) {
+          return await db.getTasksByType(input.projectId, input.taskType);
+        }
         return await db.getProjectTasks(input.projectId);
       }),
 
@@ -404,12 +424,14 @@ export const appRouter = router({
         id: z.string(),
         title: z.string().optional(),
         description: z.string().optional(),
-        status: z.enum(["pending", "in_progress", "completed", "blocked"]).optional(),
+        status: z.enum(["pending", "in_progress", "completed", "blocked", "answered", "closed"]).optional(),
         priority: z.enum(["low", "medium", "high", "critical"]).optional(),
         assignedTo: z.string().optional(),
         startDate: z.date().optional(),
         dueDate: z.date().optional(),
         completedDate: z.date().optional(),
+        responseDate: z.date().optional(),
+        response: z.string().optional(),
         estimatedHours: z.number().optional(),
         actualHours: z.number().optional(),
       }))

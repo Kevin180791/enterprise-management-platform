@@ -576,3 +576,38 @@ export async function getAllMeasurements() {
   return await db.select().from(measurements)
     .orderBy(desc(measurements.measurementDate));
 }
+
+// ==================== TASK HELPER FUNCTIONS ====================
+
+export async function getAllTasks() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projectTasks)
+    .orderBy(desc(projectTasks.createdAt));
+}
+
+export async function getTasksByType(projectId: string, taskType: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projectTasks)
+    .where(and(
+      eq(projectTasks.projectId, projectId),
+      eq(projectTasks.taskType, taskType as any)
+    ))
+    .orderBy(desc(projectTasks.createdAt));
+}
+
+export async function getTaskCountByType(projectId: string, taskType: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const tasks = await db.select().from(projectTasks)
+    .where(and(
+      eq(projectTasks.projectId, projectId),
+      eq(projectTasks.taskType, taskType as any)
+    ));
+  
+  return tasks.length;
+}
