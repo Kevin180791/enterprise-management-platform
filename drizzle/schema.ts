@@ -275,7 +275,7 @@ export type InsertProgressReport = typeof progressReports.$inferInsert;
 export const notifications = mysqlTable("notifications", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("userId", { length: 64 }).notNull(),
-  type: mysqlEnum("type", ["employee_added", "inventory_assigned", "project_created", "task_assigned", "rfi_created", "document_uploaded", "progress_report", "system"]).notNull(),
+  type: mysqlEnum("type", ["employee_added", "inventory_assigned", "project_created", "task_assigned", "rfi_created", "document_uploaded", "progress_report", "system", "defect_assigned"]).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
   message: text("message"),
   relatedEntityType: varchar("relatedEntityType", { length: 50 }),
@@ -313,4 +313,98 @@ export const capacityPlanning = mysqlTable("capacityPlanning", {
 
 export type CapacityPlanning = typeof capacityPlanning.$inferSelect;
 export type InsertCapacityPlanning = typeof capacityPlanning.$inferInsert;
+
+/**
+ * Daily Reports - Bautagebuch
+ */
+export const dailyReports = mysqlTable("dailyReports", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  projectId: varchar("projectId", { length: 64 }).notNull(),
+  reportDate: timestamp("reportDate").notNull(),
+  weather: varchar("weather", { length: 100 }),
+  temperature: varchar("temperature", { length: 50 }),
+  workDescription: text("workDescription"),
+  specialOccurrences: text("specialOccurrences"),
+  attendees: text("attendees"), // JSON array
+  workHours: int("workHours"),
+  equipmentUsed: text("equipmentUsed"),
+  materialsDelivered: text("materialsDelivered"),
+  visitorsContractors: text("visitorsContractors"),
+  safetyIncidents: text("safetyIncidents"),
+  photos: text("photos"), // JSON array
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdBy: varchar("createdBy", { length: 64 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectIdx: index("project_idx").on(table.projectId),
+  dateIdx: index("date_idx").on(table.reportDate),
+}));
+
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type InsertDailyReport = typeof dailyReports.$inferInsert;
+
+/**
+ * Inspection Protocols - Begehungsprotokolle
+ */
+export const inspectionProtocols = mysqlTable("inspectionProtocols", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  projectId: varchar("projectId", { length: 64 }).notNull(),
+  inspectionDate: timestamp("inspectionDate").notNull(),
+  inspectionType: mysqlEnum("inspectionType", ["regular", "special", "final", "acceptance"]).notNull(),
+  participants: text("participants"), // JSON array
+  areas: text("areas"), // JSON array
+  findings: text("findings"), // JSON array
+  generalNotes: text("generalNotes"),
+  nextSteps: text("nextSteps"),
+  status: mysqlEnum("status", ["draft", "completed", "approved"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdBy: varchar("createdBy", { length: 64 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectIdx: index("project_idx").on(table.projectId),
+  dateIdx: index("date_idx").on(table.inspectionDate),
+  statusIdx: index("status_idx").on(table.status),
+}));
+
+export type InspectionProtocol = typeof inspectionProtocols.$inferSelect;
+export type InsertInspectionProtocol = typeof inspectionProtocols.$inferInsert;
+
+/**
+ * Defect Protocols - Mängelprotokolle
+ */
+export const defectProtocols = mysqlTable("defectProtocols", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  projectId: varchar("projectId", { length: 64 }).notNull(),
+  defectNumber: varchar("defectNumber", { length: 50 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description").notNull(),
+  location: varchar("location", { length: 200 }),
+  trade: varchar("trade", { length: 100 }),
+  category: varchar("category", { length: 100 }),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "verified", "closed"]).default("open").notNull(),
+  responsibleParty: varchar("responsibleParty", { length: 200 }),
+  responsibleContact: varchar("responsibleContact", { length: 200 }),
+  detectedDate: timestamp("detectedDate").notNull(),
+  dueDate: timestamp("dueDate"),
+  resolvedDate: timestamp("resolvedDate"),
+  verifiedDate: timestamp("verifiedDate"),
+  detectionPhotos: text("detectionPhotos"), // JSON array
+  resolutionPhotos: text("resolutionPhotos"), // JSON array
+  detectedBy: varchar("detectedBy", { length: 64 }),
+  assignedTo: varchar("assignedTo", { length: 64 }),
+  resolutionNotes: text("resolutionNotes"),
+  verificationNotes: text("verificationNotes"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdBy: varchar("createdBy", { length: 64 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectIdx: index("project_idx").on(table.projectId),
+  statusIdx: index("status_idx").on(table.status),
+  severityIdx: index("severity_idx").on(table.severity),
+  defectNumberIdx: index("defect_number_idx").on(table.defectNumber),
+}));
+
+export type DefectProtocol = typeof defectProtocols.$inferSelect;
+export type InsertDefectProtocol = typeof defectProtocols.$inferInsert;
 

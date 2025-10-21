@@ -15,6 +15,9 @@ import Documents from "./pages/Documents";
 import Measurements from "./pages/Measurements";
 import Capacity from "./pages/Capacity";
 import Notifications from "./pages/Notifications";
+import DailyReports from "./pages/DailyReports";
+import InspectionProtocols from "./pages/InspectionProtocols";
+import DefectProtocols from "./pages/DefectProtocols";
 
 function Router() {
   return (
@@ -30,6 +33,9 @@ function Router() {
         <Route path={"/measurements"} component={Measurements} />
         <Route path={"/capacity"} component={Capacity} />
         <Route path={"/notifications"} component={Notifications} />
+        <Route path={"/daily-reports"} component={DailyReports} />
+        <Route path={"/inspection-protocols"} component={InspectionProtocols} />
+        <Route path={"/defect-protocols"} component={DefectProtocols} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
@@ -51,3 +57,5 @@ function App() {
 }
 
 export default App;
+
+

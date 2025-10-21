@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Package, Building2, ClipboardList, FileText, BarChart3, Calendar, Bell } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Package, Building2, ClipboardList, FileText, BarChart3, Calendar, Bell, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -37,6 +37,9 @@ const menuItems = [
   { icon: BarChart3, label: "Aufmaße", path: "/measurements" },
   { icon: Calendar, label: "Kapazitäten", path: "/capacity" },
   { icon: Bell, label: "Benachrichtigungen", path: "/notifications" },
+  { icon: FileText, label: "Bautagebuch", path: "/daily-reports" },
+  { icon: ClipboardCheck, label: "Begehungen", path: "/inspection-protocols" },
+  { icon: AlertTriangle, label: "Mängel", path: "/defect-protocols" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

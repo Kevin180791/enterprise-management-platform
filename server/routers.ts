@@ -774,6 +774,229 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ==================== DAILY REPORTS (BAUTAGEBUCH) ====================
+  dailyReports: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getDailyReports(input.projectId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getDailyReport(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        reportDate: z.date(),
+        weather: z.string().optional(),
+        temperature: z.string().optional(),
+        workDescription: z.string().optional(),
+        specialOccurrences: z.string().optional(),
+        attendees: z.string().optional(),
+        workHours: z.number().optional(),
+        equipmentUsed: z.string().optional(),
+        materialsDelivered: z.string().optional(),
+        visitorsContractors: z.string().optional(),
+        safetyIncidents: z.string().optional(),
+        photos: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const report = {
+          id: randomUUID(),
+          ...input,
+          createdBy: ctx.user.id,
+        };
+        await db.createDailyReport(report);
+        return report;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        weather: z.string().optional(),
+        temperature: z.string().optional(),
+        workDescription: z.string().optional(),
+        specialOccurrences: z.string().optional(),
+        attendees: z.string().optional(),
+        workHours: z.number().optional(),
+        equipmentUsed: z.string().optional(),
+        materialsDelivered: z.string().optional(),
+        visitorsContractors: z.string().optional(),
+        safetyIncidents: z.string().optional(),
+        photos: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateDailyReport(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDailyReport(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ==================== INSPECTION PROTOCOLS ====================
+  inspectionProtocols: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getInspectionProtocols(input.projectId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getInspectionProtocol(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        inspectionDate: z.date(),
+        inspectionType: z.enum(["regular", "special", "final", "acceptance"]),
+        participants: z.string().optional(),
+        areas: z.string().optional(),
+        findings: z.string().optional(),
+        generalNotes: z.string().optional(),
+        nextSteps: z.string().optional(),
+        status: z.enum(["draft", "completed", "approved"]).default("draft"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const protocol = {
+          id: randomUUID(),
+          ...input,
+          createdBy: ctx.user.id,
+        };
+        await db.createInspectionProtocol(protocol);
+        return protocol;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        participants: z.string().optional(),
+        areas: z.string().optional(),
+        findings: z.string().optional(),
+        generalNotes: z.string().optional(),
+        nextSteps: z.string().optional(),
+        status: z.enum(["draft", "completed", "approved"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateInspectionProtocol(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.deleteInspectionProtocol(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ==================== DEFECT PROTOCOLS ====================
+  defectProtocols: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getDefectProtocols(input.projectId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getDefectProtocol(input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        title: z.string(),
+        description: z.string(),
+        location: z.string().optional(),
+        trade: z.string().optional(),
+        category: z.string().optional(),
+        severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+        status: z.enum(["open", "in_progress", "resolved", "verified", "closed"]).default("open"),
+        responsibleParty: z.string().optional(),
+        responsibleContact: z.string().optional(),
+        detectedDate: z.date(),
+        dueDate: z.date().optional(),
+        detectionPhotos: z.string().optional(),
+        detectedBy: z.string().optional(),
+        assignedTo: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const count = await db.getDefectCountByProject(input.projectId);
+        const defectNumber = `MGL-${String(count + 1).padStart(4, '0')}`;
+        
+        const defect = {
+          id: randomUUID(),
+          ...input,
+          defectNumber,
+          detectedBy: input.detectedBy || ctx.user.id,
+          createdBy: ctx.user.id,
+        };
+        await db.createDefectProtocol(defect);
+        
+        if (defect.assignedTo) {
+          await db.createNotification({
+            id: randomUUID(),
+            userId: defect.assignedTo,
+            type: "defect_assigned",
+            title: "Mangel zugewiesen",
+            message: `Ihnen wurde der Mangel "${defect.title}" zugewiesen.`,
+            relatedEntityType: "defect",
+            relatedEntityId: defect.id,
+          });
+        }
+        
+        return defect;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        location: z.string().optional(),
+        trade: z.string().optional(),
+        category: z.string().optional(),
+        severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+        status: z.enum(["open", "in_progress", "resolved", "verified", "closed"]).optional(),
+        responsibleParty: z.string().optional(),
+        responsibleContact: z.string().optional(),
+        dueDate: z.date().optional(),
+        resolvedDate: z.date().optional(),
+        verifiedDate: z.date().optional(),
+        resolutionPhotos: z.string().optional(),
+        assignedTo: z.string().optional(),
+        resolutionNotes: z.string().optional(),
+        verificationNotes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateDefectProtocol(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.deleteDefectProtocol(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

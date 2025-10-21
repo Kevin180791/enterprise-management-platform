@@ -26,7 +26,10 @@ import {
   notifications,
   InsertNotification,
   capacityPlanning,
-  InsertCapacityPlanning
+  InsertCapacityPlanning,
+  dailyReports,
+  inspectionProtocols,
+  defectProtocols
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -610,4 +613,149 @@ export async function getTaskCountByType(projectId: string, taskType: string) {
     ));
   
   return tasks.length;
+}
+
+// ==================== DAILY REPORTS (BAUTAGEBUCH) ====================
+
+export async function createDailyReport(report: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(dailyReports).values(report);
+}
+
+export async function getDailyReports(projectId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(dailyReports)
+    .where(eq(dailyReports.projectId, projectId))
+    .orderBy(desc(dailyReports.reportDate));
+}
+
+export async function getDailyReport(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(dailyReports)
+    .where(eq(dailyReports.id, id))
+    .limit(1);
+  
+  return result[0];
+}
+
+export async function updateDailyReport(id: string, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(dailyReports)
+    .set(data)
+    .where(eq(dailyReports.id, id));
+}
+
+export async function deleteDailyReport(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(dailyReports).where(eq(dailyReports.id, id));
+}
+
+// ==================== INSPECTION PROTOCOLS ====================
+
+export async function createInspectionProtocol(protocol: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(inspectionProtocols).values(protocol);
+}
+
+export async function getInspectionProtocols(projectId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(inspectionProtocols)
+    .where(eq(inspectionProtocols.projectId, projectId))
+    .orderBy(desc(inspectionProtocols.inspectionDate));
+}
+
+export async function getInspectionProtocol(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(inspectionProtocols)
+    .where(eq(inspectionProtocols.id, id))
+    .limit(1);
+  
+  return result[0];
+}
+
+export async function updateInspectionProtocol(id: string, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(inspectionProtocols)
+    .set(data)
+    .where(eq(inspectionProtocols.id, id));
+}
+
+export async function deleteInspectionProtocol(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(inspectionProtocols).where(eq(inspectionProtocols.id, id));
+}
+
+// ==================== DEFECT PROTOCOLS ====================
+
+export async function createDefectProtocol(defect: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(defectProtocols).values(defect);
+}
+
+export async function getDefectProtocols(projectId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(defectProtocols)
+    .where(eq(defectProtocols.projectId, projectId))
+    .orderBy(desc(defectProtocols.detectedDate));
+}
+
+export async function getDefectProtocol(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select().from(defectProtocols)
+    .where(eq(defectProtocols.id, id))
+    .limit(1);
+  
+  return result[0];
+}
+
+export async function updateDefectProtocol(id: string, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(defectProtocols)
+    .set(data)
+    .where(eq(defectProtocols.id, id));
+}
+
+export async function deleteDefectProtocol(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(defectProtocols).where(eq(defectProtocols.id, id));
+}
+
+export async function getDefectCountByProject(projectId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const defects = await db.select().from(defectProtocols)
+    .where(eq(defectProtocols.projectId, projectId));
+  
+  return defects.length;
 }
