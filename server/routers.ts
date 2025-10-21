@@ -191,6 +191,10 @@ export const appRouter = router({
       return await db.getInventoryAssignments();
     }),
 
+    getAssignments: protectedProcedure.query(async () => {
+      return await db.getInventoryAssignments();
+    }),
+
     getEmployeeAssignments: protectedProcedure
       .input(z.object({ employeeId: z.string() }))
       .query(async ({ input }) => {
@@ -198,6 +202,13 @@ export const appRouter = router({
       }),
 
     returnAssignment: protectedProcedure
+      .input(z.object({ assignmentId: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.returnInventoryAssignment(input.assignmentId);
+        return { success: true };
+      }),
+
+    returnItem: protectedProcedure
       .input(z.object({ assignmentId: z.string() }))
       .mutation(async ({ input }) => {
         await db.returnInventoryAssignment(input.assignmentId);
@@ -402,9 +413,10 @@ export const appRouter = router({
         return task;
       }),
 
-    list: protectedProcedure
-      .query(async () => {
-        return await db.getAllTasks();
+    getTasks: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getProjectTasks(input.projectId);
       }),
 
     getByType: protectedProcedure
@@ -765,4 +777,3 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
-
