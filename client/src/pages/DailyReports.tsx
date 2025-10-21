@@ -61,12 +61,16 @@ export default function DailyReports() {
     { projectId: projectId || selectedProjectId },
     { enabled: !!(projectId || selectedProjectId) }
   );
+  const utils = trpc.useUtils();
   const createMutation = trpc.dailyReports.create.useMutation({
     onSuccess: () => {
       toast.success("Bautagebuch-Eintrag erstellt");
       setIsDialogOpen(false);
       setFormData(initialFormData);
-      trpc.useUtils().dailyReports.list.invalidate({ projectId });
+      const pid = projectId || selectedProjectId;
+      if (pid) {
+        utils.dailyReports.list.invalidate({ projectId: pid });
+      }
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);

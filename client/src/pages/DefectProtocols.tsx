@@ -38,13 +38,14 @@ export default function DefectProtocols() {
     { projectId: projectId || selectedProjectId },
     { enabled: !!(projectId || selectedProjectId) }
   );
+  const utils = trpc.useUtils();
   const createMutation = trpc.defectProtocols.create.useMutation({
     onSuccess: () => {
       toast.success("Mangel erfasst");
       setIsDialogOpen(false);
       const pid = projectId || selectedProjectId;
       if (pid) {
-        trpc.useUtils().defectProtocols.list.invalidate({ projectId: pid });
+        utils.defectProtocols.list.invalidate({ projectId: pid });
       }
     },
   });

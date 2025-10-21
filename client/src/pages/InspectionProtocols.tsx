@@ -34,11 +34,15 @@ export default function InspectionProtocols() {
     { projectId: projectId || selectedProjectId },
     { enabled: !!(projectId || selectedProjectId) }
   );
+  const utils = trpc.useUtils();
   const createMutation = trpc.inspectionProtocols.create.useMutation({
     onSuccess: () => {
       toast.success("Begehungsprotokoll erstellt");
       setIsDialogOpen(false);
-      trpc.useUtils().inspectionProtocols.list.invalidate({ projectId });
+      const pid = projectId || selectedProjectId;
+      if (pid) {
+        utils.inspectionProtocols.list.invalidate({ projectId: pid });
+      }
     },
   });
 
