@@ -229,6 +229,7 @@ export const measurements = mysqlTable("measurements", {
   measuredBy: varchar("measuredBy", { length: 64 }),
   quantity: int("quantity"),
   unit: varchar("unit", { length: 50 }),
+  unitPrice: int("unitPrice"),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),

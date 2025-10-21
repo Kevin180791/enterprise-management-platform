@@ -384,6 +384,14 @@ export async function getRFIs(projectId: string) {
     .orderBy(desc(rfis.requestDate));
 }
 
+export async function getAllRFIs() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(rfis)
+    .orderBy(desc(rfis.requestDate));
+}
+
 export async function updateRFI(id: string, data: Partial<InsertRFI>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -542,3 +550,21 @@ export async function deleteCapacityPlanning(id: string) {
   await db.delete(capacityPlanning).where(eq(capacityPlanning.id, id));
 }
 
+
+// ==================== HELPER FUNCTIONS FOR LISTS ====================
+
+export async function getAllProjectDocuments() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(projectDocuments)
+    .orderBy(desc(projectDocuments.createdAt));
+}
+
+export async function getAllCapacityPlanning() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.select().from(capacityPlanning)
+    .orderBy(desc(capacityPlanning.weekStartDate));
+}

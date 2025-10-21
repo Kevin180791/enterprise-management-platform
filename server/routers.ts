@@ -204,10 +204,54 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+  // ==================== DOCUMENT ROUTES ====================
+  documents: router({
+    list: protectedProcedure
+      .query(async () => {
+        return await db.getAllProjectDocuments();
+      }),
 
-  // ==================== PROJECT ROUTES ====================
-  projects: router({
-    list: protectedProcedure.query(async () => {
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        title: z.string(),
+        category: z.enum(["plan", "contract", "rfi", "measurement", "progress_report", "other"]).default("other"),
+        version: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const document = {
+          id: randomUUID(),
+          ...input,
+          fileUrl: "",
+          uploadedBy: ctx.user.id,
+        };
+        await db.createProjectDocument(document);
+        
+        // Create notification
+        await db.createNotification({
+          id: randomUUID(),
+          userId: ctx.user.id,
+          type: "document_uploaded",
+          title: "Neues Dokument hochgeladen",
+          message: `Dokument "${document.title}" wurde hochgeladen.`,
+          relatedEntityType: "document",
+          relatedEntityId: document.id,
+        });
+        
+        return document;
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.deleteProjectDocument(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ==================== OLD DOCUMENT ROUTES (DEPRECATED) ====================
+  _documents: router({    list: protectedProcedure.query(async () => {
       return await db.getProjects();
     }),
 
@@ -434,18 +478,26 @@ export const appRouter = router({
     create: protectedProcedure
       .input(z.object({
         projectId: z.string(),
-        rfiNumber: z.string(),
-        subject: z.string(),
-        description: z.string(),
+        title: z.string(),
+        description: z.string().optional(),
+        status: z.enum(["open", "in_review", "answered", "closed"]).default("open"),
         priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+        raisedBy: z.string().optional(),
         assignedTo: z.string().optional(),
         dueDate: z.date().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const rfi = {
           id: randomUUID(),
-          ...input,
-          requestedBy: ctx.user.id,
+          rfiNumber: `RFI-${Date.now()}`,
+          subject: input.title,
+          description: input.description || "",
+          projectId: input.projectId,
+          status: input.status,
+          priority: input.priority,
+          requestedBy: input.raisedBy || ctx.user.id,
+          assignedTo: input.assignedTo,
+          dueDate: input.dueDate,
         };
         await db.createRFI(rfi);
         
@@ -466,25 +518,26 @@ export const appRouter = router({
       }),
 
     list: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
-      .query(async ({ input }) => {
-        return await db.getRFIs(input.projectId);
+      .query(async () => {
+        return await db.getAllRFIs();
       }),
 
     update: protectedProcedure
       .input(z.object({
         id: z.string(),
-        subject: z.string().optional(),
+        projectId: z.string().optional(),
+        title: z.string().optional(),
         description: z.string().optional(),
         status: z.enum(["open", "in_review", "answered", "closed"]).optional(),
         priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+        raisedBy: z.string().optional(),
         assignedTo: z.string().optional(),
         dueDate: z.date().optional(),
-        responseDate: z.date().optional(),
-        response: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
+        const { id, title, ...rest } = input;
+        const data: any = { ...rest };
+        if (title) data.subject = title;
         await db.updateRFI(id, data);
         return { success: true };
       }),
@@ -630,19 +683,27 @@ export const appRouter = router({
       .input(z.object({
         employeeId: z.string(),
         projectId: z.string().optional(),
-        weekStartDate: z.date(),
-        allocatedHours: z.number(),
-        availableHours: z.number(),
-        notes: z.string().optional(),
+        startDate: z.date(),
+        endDate: z.date(),
+        allocatedHours: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const capacity = {
           id: randomUUID(),
-          ...input,
+          weekStartDate: input.startDate,
+          allocatedHours: input.allocatedHours || 40,
+          availableHours: 40,
+          employeeId: input.employeeId,
+          projectId: input.projectId,
           createdBy: ctx.user.id,
         };
         await db.createCapacityPlanning(capacity);
         return capacity;
+      }),
+
+    list: protectedProcedure
+      .query(async () => {
+        return await db.getAllCapacityPlanning();
       }),
 
     getByEmployee: protectedProcedure
