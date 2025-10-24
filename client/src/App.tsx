@@ -16,6 +16,7 @@ import Measurements from "./pages/Measurements";
 import Capacity from "./pages/Capacity";
 import Notifications from "./pages/Notifications";
 import DailyReports from "./pages/DailyReports";
+import DailyReportDetail from "./pages/DailyReportDetail";
 import InspectionProtocols from "./pages/InspectionProtocols";
 import DefectProtocols from "./pages/DefectProtocols";
 
@@ -33,7 +34,8 @@ function Router() {
         <Route path={"/measurements"} component={Measurements} />
         <Route path={"/capacity"} component={Capacity} />
         <Route path={"/notifications"} component={Notifications} />
-        <Route path={"/daily-reports"} component={DailyReports} />
+        <Route path="/daily-reports" component={DailyReports} />
+      <Route path="/daily-reports/:id" component={DailyReportDetail} />
         <Route path={"/inspection-protocols"} component={InspectionProtocols} />
         <Route path={"/defect-protocols"} component={DefectProtocols} />
         <Route path={"/404"} component={NotFound} />

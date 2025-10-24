@@ -113,8 +113,7 @@ export default function DailyReports() {
         </Button>
       </div>
 
-      <div className="grid gap-6">
-        {reports && reports.length > 0 ? (
+      <div className="grid          {reports && reports.length > 0 ? (
             reports.map((report: any) => (
               <Link key={report.id} href={`/daily-reports/${report.id}`}>
                 <div className="cursor-pointer hover:shadow-lg transition-shadow">
@@ -176,8 +175,6 @@ export default function DailyReports() {
                 )}
               </CardContent>
             </Card>
-                </div>
-              </Link>
           ))
         ) : (
           <Card>

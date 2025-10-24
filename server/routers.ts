@@ -997,6 +997,21 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // Export functions
+  exports: router({
+    uploadPhoto: protectedProcedure
+      .input(z.object({
+        base64Data: z.string(),
+        fileName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { uploadBase64Image } = await import("./fileUpload");
+        const result = await uploadBase64Image(input.base64Data, input.fileName);
+        return result;
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
+
