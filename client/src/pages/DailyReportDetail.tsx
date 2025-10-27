@@ -205,23 +205,13 @@ export default function DailyReportDetail() {
           </Card>
         )}
 
-        {/* Next Day Planning */}
-        {report.nextDayPlanning && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Planung für den nächsten Tag</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{report.nextDayPlanning}</p>
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Metadata */}
         <Card>
           <CardContent className="pt-6">
             <div className="text-xs text-muted-foreground">
-              <p>Erstellt am: {format(new Date(report.createdAt), "dd.MM.yyyy HH:mm", { locale: de })}</p>
+              <p>Erstellt am: {report.createdAt ? format(new Date(report.createdAt), "dd.MM.yyyy HH:mm", { locale: de }) : "Unbekannt"}</p>
               {report.createdBy && <p>Erstellt von: {report.createdBy}</p>}
             </div>
           </CardContent>
