@@ -778,9 +778,12 @@ export const appRouter = router({
   // ==================== DAILY REPORTS (BAUTAGEBUCH) ====================
   dailyReports: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
+      .input(z.object({ projectId: z.string().optional() }).optional())
       .query(async ({ input }) => {
-        return await db.getDailyReports(input.projectId);
+        if (input?.projectId) {
+          return await db.getDailyReports(input.projectId);
+        }
+        return await db.getAllDailyReports();
       }),
 
     get: protectedProcedure
@@ -847,9 +850,12 @@ export const appRouter = router({
   // ==================== INSPECTION PROTOCOLS ====================
   inspectionProtocols: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
+      .input(z.object({ projectId: z.string().optional() }).optional())
       .query(async ({ input }) => {
-        return await db.getInspectionProtocols(input.projectId);
+        if (input?.projectId) {
+          return await db.getInspectionProtocols(input.projectId);
+        }
+        return await db.getAllInspectionProtocols();
       }),
 
     get: protectedProcedure
@@ -907,9 +913,12 @@ export const appRouter = router({
   // ==================== DEFECT PROTOCOLS ====================
   defectProtocols: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
+      .input(z.object({ projectId: z.string().optional() }).optional())
       .query(async ({ input }) => {
-        return await db.getDefectProtocols(input.projectId);
+        if (input?.projectId) {
+          return await db.getDefectProtocols(input.projectId);
+        }
+        return await db.getAllDefectProtocols();
       }),
 
     get: protectedProcedure
@@ -995,6 +1004,25 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteDefectProtocol(input.id);
         return { success: true };
+      }),
+  }),
+
+  // ==================== FILE UPLOAD ====================
+  files: router({
+    upload: protectedProcedure
+      .input(z.object({
+        filename: z.string(),
+        contentType: z.string(),
+        data: z.string(), // base64
+      }))
+      .mutation(async ({ input }) => {
+        const { storagePut } = await import("./storage");
+        // Extract base64 data (remove data:image/...;base64, prefix)
+        const base64Data = input.data.split(',')[1] || input.data;
+        const buffer = Buffer.from(base64Data, 'base64');
+        const key = `uploads/${Date.now()}-${input.filename}`;
+        const result = await storagePut(key, buffer, input.contentType);
+        return { url: result.url, key: result.key };
       }),
   }),
 

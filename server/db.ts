@@ -759,3 +759,24 @@ export async function getDefectCountByProject(projectId: string) {
   
   return defects.length;
 }
+
+// Get all daily reports (across all projects)
+export async function getAllDailyReports() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dailyReports).orderBy(desc(dailyReports.reportDate));
+}
+
+// Get all inspection protocols (across all projects)
+export async function getAllInspectionProtocols() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(inspectionProtocols).orderBy(desc(inspectionProtocols.inspectionDate));
+}
+
+// Get all defect protocols (across all projects)
+export async function getAllDefectProtocols() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(defectProtocols).orderBy(desc(defectProtocols.createdAt));
+}
