@@ -58,8 +58,7 @@ export default function DailyReports() {
 
   const { data: projects } = trpc.projects.list.useQuery();
   const { data: reports, isLoading } = trpc.dailyReports.list.useQuery(
-    { projectId: projectId || selectedProjectId },
-    { enabled: !!(projectId || selectedProjectId) }
+    projectId || selectedProjectId ? { projectId: projectId || selectedProjectId } : undefined
   );
   const utils = trpc.useUtils();
   const createMutation = trpc.dailyReports.create.useMutation({

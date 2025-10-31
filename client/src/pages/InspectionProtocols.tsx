@@ -31,8 +31,7 @@ export default function InspectionProtocols() {
 
   const { data: projects } = trpc.projects.list.useQuery();
   const { data: protocols, isLoading } = trpc.inspectionProtocols.list.useQuery(
-    { projectId: projectId || selectedProjectId },
-    { enabled: !!(projectId || selectedProjectId) }
+    projectId || selectedProjectId ? { projectId: projectId || selectedProjectId } : undefined
   );
   const utils = trpc.useUtils();
   const createMutation = trpc.inspectionProtocols.create.useMutation({

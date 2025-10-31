@@ -2,8 +2,8 @@
 
 ## Bugs zu beheben
 
-- [x] Bautagebuch-Einträge werden nicht angezeigt (Liste leer trotz Erstellung) - BEHOBEN
-- [x] Begehungsprotokolle werden nicht angezeigt - BEHOBEN
+- [x] Bautagebuch-Einträge werden nicht angezeigt (Liste leer trotz Erstellung) - BEHOBEN (Query-Bedingung entfernt)
+- [x] Begehungsprotokolle werden nicht angezeigt - BEHOBEN (Query-Bedingung entfernt)
 - [x] Mängelprotokolle werden nicht angezeigt - BEHOBEN
 - [ ] Foto-Upload-Funktionalität fehlt in Formularen
 - [ ] Export-Buttons (PDF/PPTX) fehlen oder funktionieren nicht
