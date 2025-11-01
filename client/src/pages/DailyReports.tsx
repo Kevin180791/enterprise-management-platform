@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, FileText, Calendar, Cloud, Thermometer, Users, Package, AlertTriangle } from "lucide-react";
+import { Plus, FileText, Calendar, Cloud, Thermometer, Users, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -55,6 +55,7 @@ export default function DailyReports() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<DailyReportFormData>(initialFormData);
+  const [editingReport, setEditingReport] = useState<any>(null);
 
   const { data: projects } = trpc.projects.list.useQuery();
   const { data: reports, isLoading } = trpc.dailyReports.list.useQuery(
@@ -66,10 +67,31 @@ export default function DailyReports() {
       toast.success("Bautagebuch-Eintrag erstellt");
       setIsDialogOpen(false);
       setFormData(initialFormData);
-      const pid = projectId || selectedProjectId;
-      if (pid) {
-        utils.dailyReports.list.invalidate({ projectId: pid });
-      }
+      setEditingReport(null);
+      utils.dailyReports.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.dailyReports.update.useMutation({
+    onSuccess: () => {
+      toast.success("Bautagebuch-Eintrag aktualisiert");
+      setIsDialogOpen(false);
+      setFormData(initialFormData);
+      setEditingReport(null);
+      utils.dailyReports.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.dailyReports.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Bautagebuch-Eintrag gelöscht");
+      utils.dailyReports.list.invalidate();
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -77,7 +99,7 @@ export default function DailyReports() {
   });
 
   const handleSubmit = () => {
-    createMutation.mutate({
+    const data = {
       projectId: projectId || selectedProjectId,
       reportDate: new Date(formData.reportDate),
       weather: formData.weather,
@@ -90,7 +112,41 @@ export default function DailyReports() {
       materialsDelivered: formData.materialsDelivered,
       visitorsContractors: formData.visitorsContractors,
       safetyIncidents: formData.safetyIncidents,
+    };
+
+    if (editingReport) {
+      updateMutation.mutate({ id: editingReport.id, ...data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (report: any, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingReport(report);
+    setFormData({
+      reportDate: report.reportDate ? new Date(report.reportDate).toISOString().split('T')[0] : '',
+      weather: report.weather || '',
+      temperature: report.temperature || '',
+      workDescription: report.workDescription || '',
+      specialOccurrences: report.specialOccurrences || '',
+      attendees: report.attendees || '',
+      workHours: report.workHours?.toString() || '',
+      equipmentUsed: report.equipmentUsed || '',
+      materialsDelivered: report.materialsDelivered || '',
+      visitorsContractors: report.visitorsContractors || '',
+      safetyIncidents: report.safetyIncidents || '',
     });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm("Öchten Sie diesen Eintrag wirklich löschen?")) {
+      deleteMutation.mutate({ id });
+    }
   };
 
   if (isLoading) {
@@ -145,6 +201,22 @@ export default function DailyReports() {
                         </span>
                       )}
                     </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleEdit(report, e)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDelete(report.id, e)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>

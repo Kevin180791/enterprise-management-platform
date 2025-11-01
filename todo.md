@@ -9,6 +9,16 @@
 - [ ] Export-Buttons (PDF/PPTX) fehlen oder funktionieren nicht
 - [ ] Zuordnungen-Seite zeigt keine Daten an
 
+## Neue Features
+
+- [x] Bearbeiten-Funktion für DailyReports hinzugefügt
+- [x] Löschen-Funktion für DailyReports hinzugefügt
+- [ ] Bearbeiten/Löschen für InspectionProtocols
+- [ ] Bearbeiten/Löschen für DefectProtocols
+- [ ] Bearbeiten/Löschen für Employees
+- [ ] Bearbeiten/Löschen für Inventory
+- [ ] Bearbeiten/Löschen für Projects
+
 ## Implementierte Features
 
 - [x] Dashboard mit Statistiken
