@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { PhotoUpload } from "@/components/PhotoUpload";
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export default function DailyReports() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<DailyReportFormData>(initialFormData);
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const { data: projects } = trpc.projects.list.useQuery();
   const { data: reports, isLoading } = trpc.dailyReports.list.useQuery(
@@ -68,6 +70,7 @@ export default function DailyReports() {
       setIsDialogOpen(false);
       setFormData(initialFormData);
       setEditingReport(null);
+      setPhotos([]);
       utils.dailyReports.list.invalidate();
     },
     onError: (error) => {
@@ -81,6 +84,7 @@ export default function DailyReports() {
       setIsDialogOpen(false);
       setFormData(initialFormData);
       setEditingReport(null);
+      setPhotos([]);
       utils.dailyReports.list.invalidate();
     },
     onError: (error) => {
@@ -112,6 +116,7 @@ export default function DailyReports() {
       materialsDelivered: formData.materialsDelivered,
       visitorsContractors: formData.visitorsContractors,
       safetyIncidents: formData.safetyIncidents,
+      photos: JSON.stringify(photos),
     };
 
     if (editingReport) {
@@ -138,6 +143,11 @@ export default function DailyReports() {
       visitorsContractors: report.visitorsContractors || '',
       safetyIncidents: report.safetyIncidents || '',
     });
+    try {
+      setPhotos(report.photos ? JSON.parse(report.photos) : []);
+    } catch {
+      setPhotos([]);
+    }
     setIsDialogOpen(true);
   };
 
@@ -385,6 +395,15 @@ export default function DailyReports() {
                 value={formData.safetyIncidents}
                 onChange={(e) => setFormData({ ...formData, safetyIncidents: e.target.value })}
                 rows={2}
+              />
+            </div>
+
+            <div>
+              <Label>Fotos</Label>
+              <PhotoUpload
+                onUploadComplete={(urls) => setPhotos(urls)}
+                existingPhotos={photos}
+                maxPhotos={20}
               />
             </div>
           </div>

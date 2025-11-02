@@ -5,9 +5,12 @@
 - [x] Bautagebuch-Einträge werden nicht angezeigt (Liste leer trotz Erstellung) - BEHOBEN (Query-Bedingung entfernt)
 - [x] Begehungsprotokolle werden nicht angezeigt - BEHOBEN (Query-Bedingung entfernt)
 - [x] Mängelprotokolle werden nicht angezeigt - BEHOBEN
-- [ ] Foto-Upload-Funktionalität fehlt in Formularen
+- [x] Foto-Upload für Bautagebuch integrieren
+- [ ] Foto-Upload für Begehungen integrieren
+- [ ] Foto-Upload für Mängel integrieren
 - [ ] Export-Buttons (PDF/PPTX) fehlen oder funktionieren nicht
-- [ ] Zuordnungen-Seite zeigt keine Daten an
+- [ ] Zuordnungen-Seite Fehler beheben
+- [ ] Aufmaß: Mehrere Positionen pro Aufmaß ermöglichen
 
 ## Neue Features
 
