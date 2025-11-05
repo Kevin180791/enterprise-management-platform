@@ -9,7 +9,7 @@
 - [ ] Foto-Upload für Begehungen integrieren
 - [ ] Foto-Upload für Mängel integrieren
 - [ ] Export-Buttons (PDF/PPTX) fehlen oder funktionieren nicht
-- [ ] Zuordnungen-Seite Fehler beheben
+- [x] Zuordnungen-Seite Fehler beheben - itemId statt inventoryItemId, status aus returnedDate ableiten
 - [ ] Aufmaß: Mehrere Positionen pro Aufmaß ermöglichen
 
 ## Neue Features

@@ -43,12 +43,14 @@ export default function InventoryAssignments() {
 
   // Enrich assignments with inventory and employee data
   const enrichedAssignments = assignments?.map((assignment: any) => {
-    const item = inventory?.find((i: any) => i.id === assignment.inventoryItemId);
+    const item = inventory?.find((i: any) => i.id === assignment.itemId);
     const employee = employees?.find((e: any) => e.id === assignment.employeeId);
+    const status = assignment.returnedDate ? "returned" : "active";
     return {
       ...assignment,
       item,
       employee,
+      status,
     };
   }) || [];
 
