@@ -56,9 +56,10 @@ export default function InventoryAssignments() {
 
   // Filter assignments
   const filteredAssignments = enrichedAssignments.filter((assignment: any) => {
+    const employeeName = `${assignment.employee?.firstName || ''} ${assignment.employee?.lastName || ''}`.trim() || 'Unbekannt';
     const matchesSearch =
       assignment.item?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.employee?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.item?.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesType = filterType === "all" || assignment.item?.type === filterType;
@@ -223,7 +224,7 @@ export default function InventoryAssignments() {
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{assignment.employee?.name || "Unbekannt"}</p>
+                      <p className="font-medium">{`${assignment.employee?.firstName || ''} ${assignment.employee?.lastName || ''}`.trim() || 'Unbekannt'}</p>
                       <p className="text-xs text-muted-foreground">Mitarbeiter</p>
                     </div>
                   </div>
